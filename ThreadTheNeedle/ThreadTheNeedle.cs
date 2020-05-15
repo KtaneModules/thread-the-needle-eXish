@@ -132,7 +132,7 @@ public class ThreadTheNeedle : MonoBehaviour {
 	// The bonus wheels!
 	private static WheelPattern[,] BONUS_WHEELS = {
 		// [w, u]
-		{ new WheelPattern("12345678", "..O..^^O"), new WheelPattern("12345678", "..^...^^"), new WheelPattern("12345678", "..^^.^.O") },
+		{ new WheelPattern("12345678", "..O..^^O"), new WheelPattern("12345678", "..^O..^^"), new WheelPattern("12345678", "..^^.^.O") },
 		{ new WheelPattern("12345678", "^^.O.^^^"), new WheelPattern("12345678", "....OOOO"), new WheelPattern("12345678", "..^OO...") },
 		{ new WheelPattern("12345678", "^...OOOO"), new WheelPattern("12345678", ".^^O..^^"), new WheelPattern("12345678", "...^O^^.") },
 		{ new WheelPattern("12345678", ".^O^O^.O"), new WheelPattern("12345678", ".O^.^.O^"), new WheelPattern("12345678", "..^^.OOO") }
