@@ -154,9 +154,13 @@ public class ThreadTheNeedle : MonoBehaviour
 
 	private Wheel[] wheels;
 
-	// Use this for initialization
-	void Start () {
-		bombInfo = GetComponent<KMBombInfo>();
+    static int moduleIdCounter = 1;
+    int moduleId;
+
+    // Use this for initialization
+    void Start () {
+        moduleId = moduleIdCounter++;
+        bombInfo = GetComponent<KMBombInfo>();
 		wheels = new Wheel[wheelBodies.Length];
 
 		var sb = new StringBuilder();
@@ -167,7 +171,7 @@ public class ThreadTheNeedle : MonoBehaviour
 		var patterns = new WheelPattern[wheelBodies.Length + 1];
 		var oops_help_infinite_loop = false;
 		do {
-			Debug.Log("Making the wheel patterns...");
+			Debug.LogFormat("<Thread the Needle #{0}> Generating the wheel patterns...", moduleId);
 			for (int c = 0; c < wheelBodies.Length; c++) {
 				var premadeWheelIdx = Random.Range(0, POSSIBLE_WHEELS.Length);
 				WheelPattern pattern = POSSIBLE_WHEELS[premadeWheelIdx];
@@ -176,8 +180,9 @@ public class ThreadTheNeedle : MonoBehaviour
 			patterns[patterns.Length - 1] = bonusPattern;
 			possibleSolution = TestIfWheelComboIsPossible(patterns);
 		} while (!possibleSolution && !oops_help_infinite_loop);
-		// Nice, now make them into real wheels
-		for (int c = 0; c < wheelBodies.Length; c++) {
+        Debug.LogFormat("<Thread the Needle #{0}> Wheel patterns generated!", moduleId);
+        // Nice, now make them into real wheels
+        for (int c = 0; c < wheelBodies.Length; c++) {
 			Wheel wheel = new Wheel(patterns[c], Random.Range(0, patterns[c].Size), wheelBodies[c]);
 
 			// Make the buttons spin the wheel
@@ -193,36 +198,50 @@ public class ThreadTheNeedle : MonoBehaviour
 
 			wheels[c] = wheel;
 
-			sb.Append("Wheel #"); sb.Append(c); sb.Append(" : "); sb.Append(wheel.ToString()); sb.Append('\n');
+			sb.Append("Wheel #"); sb.Append(c + 1); sb.Append(": "); sb.Append(wheel.ToString()); sb.Append('\n');
 		}
 
 		// Make the submit button do a thing
 		submitButton.OnInteract += delegate () {
-			GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
+			GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, submitButton.transform);
 			GetComponent<KMSelectable>().AddInteractionPunch();
-			if (moduleSolved) return false; // done
+			if (moduleSolved || !isActive) return false; // done
 
 			var testTheseWheels = new Wheel[wheels.Length + 1];
 			wheels.CopyTo(testTheseWheels, 0);
 			testTheseWheels[wheels.Length] = GetBonusWheel();
 			var _sb = new StringBuilder();
+            int ct = 0;
 			foreach (Wheel w in testTheseWheels) {
-				_sb.Append(w.ToString());
+                _sb.Append("Wheel #");
+                _sb.Append(ct + 1);
+                if (ct == 5)
+                    _sb.Append(" (Bonus)");
+                _sb.Append(": ");
+                _sb.Append(w.ToString());
 				_sb.Append('\n');
+                ct++;
 			}
-			Debug.Log(_sb.ToString());
-			var success = TestWheelCombo(testTheseWheels);
+            Debug.LogFormat("[Thread the Needle #{0}] Submitted Wheels ({1} strike{2}, {3} solve{4})", moduleId, bombInfo.GetStrikes(), bombInfo.GetStrikes() != 1 ? "s" : "", bombInfo.GetSolvedModuleNames().Count, bombInfo.GetSolvedModuleNames().Count != 1 ? "s" : "");
+            for (int i = 0; i < testTheseWheels.Length; i++)
+                Debug.LogFormat("[Thread the Needle #{0}] {1}", moduleId, _sb.ToString().Split('\n')[i]);
+            var success = TestWheelCombo(testTheseWheels, true);
 			if (success)
-				GetComponent<KMBombModule>().HandlePass(); // yay
+            {
+                moduleSolved = true;
+                GetComponent<KMBombModule>().HandlePass(); // yay
+            }
 			else
 				GetComponent<KMBombModule>().HandleStrike(); // boo
 			return false;
 		};
 
-		// Debug info!
-		Debug.Log("Thread the Needle:\n" + sb.ToString());
+        // Debug info!
+        Debug.LogFormat("[Thread the Needle #{0}] Generated Wheels", moduleId);
+        for (int i = 0; i < wheelBodies.Length; i++)
+            Debug.LogFormat("[Thread the Needle #{0}] {1}", moduleId, sb.ToString().Split('\n')[i]);
 
-		GetComponent<KMBombModule>().OnActivate += () => isActive = true;
+        GetComponent<KMBombModule>().OnActivate += () => isActive = true;
 	}
 
 	private Wheel GetBonusWheel() {
@@ -259,46 +278,58 @@ public class ThreadTheNeedle : MonoBehaviour
 		WheelPattern pattern = BONUS_WHEELS[wIndex, uIndex]; // No mating
 
 		// Spinny amount
-		int spin = bombInfo.GetStrikes() - bombInfo.GetSolvedModuleNames().Count;
+		int spin = (bombInfo.GetStrikes() - bombInfo.GetSolvedModuleNames().Count) < 0 ? ((bombInfo.GetStrikes() - bombInfo.GetSolvedModuleNames().Count) % 8) + 8 : (bombInfo.GetStrikes() - bombInfo.GetSolvedModuleNames().Count) % 8;
 
-		// Wheelio
-		return new Wheel(pattern, spin, null);
+        // Wheelio
+        return new Wheel(pattern, spin, null);
 	}
 
-	bool TestWheelCombo(Wheel[] wheels) {
-		Debug.Log("Testing wheels...");
-		for (int absoluteRoundPos = 0; absoluteRoundPos < WheelPattern.BIGGEST_SIZE; absoluteRoundPos++) {
+	bool TestWheelCombo(Wheel[] wheels, bool submit) {
+        if (submit)
+            Debug.LogFormat("<Thread the Needle #{0}> Testing submitted wheels...", moduleId);
+        bool[] circleRows = new bool[8];
+        bool[] triangleRows = new bool[8];
+        for (int absoluteRoundPos = 0; absoluteRoundPos < WheelPattern.BIGGEST_SIZE; absoluteRoundPos++) {
 			// RoundPos represents like numbers on a clock (except this increases counter-clockwise)
 			bool allCircle = true;
 			bool allTriangle = true;
-			foreach(var wheel in wheels) {
-				var roundPos = absoluteRoundPos + wheel.Index;
-				// Get the hole at this position in the wheel.
-				// Remember things might not have all the holes.
-				// In that case it's assumed they're evenly spaced.
-				Hole hole = wheel.Pattern.Holes[roundPos % WheelPattern.BIGGEST_SIZE];
+			for (int i = 0; i < 5; i++) {
+				var roundPos = absoluteRoundPos + wheels[i].Index;
+                // Get the hole at this position in the wheel.
+                // Remember things might not have all the holes.
+                // In that case it's assumed they're evenly spaced.
+                Hole hole = wheels[i].Pattern.Holes[roundPos % WheelPattern.BIGGEST_SIZE];
 
-				if (hole == Hole.None) {
-					allCircle = false;
-					allTriangle = false;
-					break; // No need to continue
-				}
-				if (hole != Hole.Circle) allCircle = false;
-				if (hole != Hole.Triangle) allTriangle = false;
-			}
+                if (hole == Hole.None)
+                {
+                    allCircle = false;
+                    allTriangle = false;
+                    break; // No need to continue
+                }
+                if (hole != Hole.Circle) allCircle = false;
+                if (hole != Hole.Triangle) allTriangle = false;
+            }
 
-			if (allCircle) {
-				Debug.Log("Beat the module!");
-				return true;
+            if (allCircle) {
+                circleRows[absoluteRoundPos] = true;
 			}
 			if (allTriangle) {
-				Debug.Log("Failed due to a straight line of triangles.");
-				return false;
-			}
-			// Otherwise, there was neither.
-		}
-		Debug.Log("Failed due to no straight line of circles.");
-		return false; // We never found all circles.
+                triangleRows[absoluteRoundPos] = true;
+            }
+            // Otherwise, there was neither.
+        }
+        if (submit)
+        {
+            Debug.LogFormat("[Thread the Needle #{0}] Row of circular holes: {1}", moduleId, circleRows.Contains(true) ? "Found" : "Not Found");
+            Debug.LogFormat("[Thread the Needle #{0}] Row of triangular holes: {1}", moduleId, triangleRows.Contains(true) ? "Found" : "Not Found");
+            if (circleRows.Contains(true) && !triangleRows.Contains(true))
+                Debug.LogFormat("[Thread the Needle #{0}] Submission was correct, module disarmed", moduleId);
+            else
+                Debug.LogFormat("[Thread the Needle #{0}] Submission was incorrect, strike", moduleId);
+        }
+        if (circleRows.Contains(true) && !triangleRows.Contains(true))
+            return true;
+        return false; // We never found all circles.
 	}
 
 
@@ -323,7 +354,7 @@ public class ThreadTheNeedle : MonoBehaviour
 				var wheel = new Wheel(patterns[c], spin, null);
 				test[c] = wheel;
 			}
-			var success = TestWheelCombo(test);
+			var success = TestWheelCombo(test, false);
 			if (success) return true;
 		}
 
@@ -332,30 +363,23 @@ public class ThreadTheNeedle : MonoBehaviour
 	}
 
 	void PressSpinnyButton(int idx, bool up) {
-		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, transform);
+		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, up ? upButtons[idx].transform : downButtons[idx].transform);
 		GetComponent<KMSelectable>().AddInteractionPunch();
 
-		Debug.Log(string.Format("Pressed spinny button #{0} with up?: {1}", idx, up));
-
-		if (moduleSolved)
+		if (moduleSolved || !isActive)
 			return; // don't worry!
 
-		if (!isActive) {
-			// No! Don't play with the buttons before-hand!
-			GetComponent<KMBombModule>().HandleStrike();
-		} else {
-			if (up)
-				wheels[idx].SpinUp();
-			else
-				wheels[idx].SpinDown();
+        if (up)
+            wheels[idx].SpinUp();
+        else
+            wheels[idx].SpinDown();
 
-			wheels[idx].UpdateLabel();
-		}
-	}
+        wheels[idx].UpdateLabel();
+    }
 	
 	//twitch plays
     #pragma warning disable 414
-    private readonly string TwitchHelpMessage = @"To cycle down a wheel in the module, use the command !{0} cycle [1-5] | To press the down button on a wheel, use the command !{0} press [1-5] [1-8] | To submit your answer, use the command !{0} submit";
+    private readonly string TwitchHelpMessage = @"To cycle down a wheel on the module, use the command !{0} cycle [1-5] | To press the down button on a wheel, use the command !{0} press [1-5] [1-8] | To submit your answer, use the command !{0} submit";
     #pragma warning restore 414
 	
 	string[] ValidKeys = {"1", "2", "3", "4", "5"};
@@ -415,4 +439,100 @@ public class ThreadTheNeedle : MonoBehaviour
 			submitButton.OnInteract();
 		}
 	}
+
+    IEnumerator TwitchHandleForcedSolve()
+    {
+        while (!isActive) { yield return true; }
+        int[] spins = new int[5];
+        int ct = 0;
+        while (true)
+        {
+            Wheel[] test = new Wheel[wheels.Length + 1];
+            for (int j = 0; j < wheels.Length; j++)
+            {
+                var wheel = new Wheel(wheels[j].Pattern, spins[j], null);
+                test[j] = wheel;
+            }
+            test[5] = GetBonusWheel();
+            var success = TestWheelCombo(test, false);
+            if (success) break;
+            ct++;
+            spins[0] = ct;
+            if (spins[0] == 8)
+            {
+                spins[1]++;
+                if (spins[1] == 8)
+                {
+                    spins[2]++;
+                    if (spins[2] == 8)
+                    {
+                        spins[3]++;
+                        if (spins[3] == 8)
+                        {
+                            spins[4]++;
+                            if (spins[4] == 8)
+                            {
+                                break;
+                            }
+                        }
+                        spins[3] %= 8;
+                    }
+                    spins[2] %= 8;
+                }
+                spins[1] %= 8;
+            }
+            ct %= 8;
+            spins[0] %= 8;
+        }
+        for (int j = 0; j < 5; j++)
+        {
+            int left = wheels[j].Index;
+            int right = wheels[j].Index;
+            int ct1 = 0;
+            int ct2 = 0;
+            while (left != spins[j])
+            {
+                left--;
+                if (left < 0)
+                    left = 7;
+                ct1++;
+            }
+            while (right != spins[j])
+            {
+                right++;
+                if (right > 7)
+                    right = 0;
+                ct2++;
+            }
+            if (ct1 < ct2)
+            {
+                for (int i = 0; i < ct1; i++)
+                {
+                    downButtons[j].OnInteract();
+                    yield return new WaitForSecondsRealtime(0.1f);
+                }
+            }
+            else if (ct1 > ct2)
+            {
+                for (int i = 0; i < ct2; i++)
+                {
+                    upButtons[j].OnInteract();
+                    yield return new WaitForSecondsRealtime(0.1f);
+                }
+            }
+            else
+            {
+                int rando = Random.Range(0, 2);
+                for (int i = 0; i < ct2; i++)
+                {
+                    if (rando == 0)
+                        upButtons[j].OnInteract();
+                    else
+                        downButtons[j].OnInteract();
+                    yield return new WaitForSecondsRealtime(0.1f);
+                }
+            }
+        }
+        submitButton.OnInteract();
+    }
 }
