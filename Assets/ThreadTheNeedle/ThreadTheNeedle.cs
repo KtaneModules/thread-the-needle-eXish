@@ -200,9 +200,11 @@ public class ThreadTheNeedle : MonoBehaviour
 
 			sb.Append("Wheel #"); sb.Append(c + 1); sb.Append(": "); sb.Append(wheel.ToString()); sb.Append('\n');
 		}
+        Wheel bonus = GetBonusWheel();
+        sb.Append("Wheel #6 (Bonus): "); sb.Append(bonus.ToString());
 
-		// Make the submit button do a thing
-		submitButton.OnInteract += delegate () {
+        // Make the submit button do a thing
+        submitButton.OnInteract += delegate () {
 			GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, submitButton.transform);
 			GetComponent<KMSelectable>().AddInteractionPunch();
 			if (moduleSolved || !isActive) return false; // done
@@ -238,7 +240,7 @@ public class ThreadTheNeedle : MonoBehaviour
 
         // Debug info!
         Debug.LogFormat("[Thread the Needle #{0}] Generated Wheels", moduleId);
-        for (int i = 0; i < wheelBodies.Length; i++)
+        for (int i = 0; i < wheelBodies.Length + 1; i++)
             Debug.LogFormat("[Thread the Needle #{0}] {1}", moduleId, sb.ToString().Split('\n')[i]);
 
         GetComponent<KMBombModule>().OnActivate += () => isActive = true;

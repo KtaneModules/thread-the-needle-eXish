@@ -18,8 +18,8 @@ MonoBehaviour:
     https://steamcommunity.com/sharedfiles/filedetails/?id=2097423064\n\nIdentify
     a set of code wheels, then align holes hidden inside them.\n\r\nHTML: https://ktane.timwi.de/HTML/Thread%20the%20Needle.html\r\nPDF:
     https://ktane.timwi.de/PDF/Thread%20the%20Needle.pdf\r\n\r\nThread the Needle
-    (threadTheNeedle) v1.0.0\nModule by gamma-delta, maintained by eXish\nTwitch Plays
+    (threadTheNeedle) v1.0.1\nModule by gamma-delta, maintained by eXish\nTwitch Plays
     supported"
-  version: 1.0.0
+  version: 1.0.1
   outputFolder: build
   previewImage: {fileID: 2800000, guid: a0e6273a0c1119447b44645b3f2244b4, type: 3}
