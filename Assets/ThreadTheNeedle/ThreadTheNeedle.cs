@@ -206,7 +206,7 @@ public class ThreadTheNeedle : MonoBehaviour
         // Make the submit button do a thing
         submitButton.OnInteract += delegate () {
 			GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, submitButton.transform);
-			GetComponent<KMSelectable>().AddInteractionPunch();
+            submitButton.AddInteractionPunch();
 			if (moduleSolved || !isActive) return false; // done
 
 			var testTheseWheels = new Wheel[wheels.Length + 1];
@@ -365,8 +365,9 @@ public class ThreadTheNeedle : MonoBehaviour
 	}
 
 	void PressSpinnyButton(int idx, bool up) {
-		GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, up ? upButtons[idx].transform : downButtons[idx].transform);
-		GetComponent<KMSelectable>().AddInteractionPunch();
+        KMSelectable button = up ? upButtons[idx] : downButtons[idx];
+        GetComponent<KMAudio>().PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, button.transform);
+		button.AddInteractionPunch();
 
 		if (moduleSolved || !isActive)
 			return; // don't worry!
