@@ -295,7 +295,7 @@ public class ThreadTheNeedle : MonoBehaviour
 			// RoundPos represents like numbers on a clock (except this increases counter-clockwise)
 			bool allCircle = true;
 			bool allTriangle = true;
-			for (int i = 0; i < 5; i++) {
+			for (int i = 0; i < 6; i++) {
 				var roundPos = absoluteRoundPos + wheels[i].Index;
                 // Get the hole at this position in the wheel.
                 // Remember things might not have all the holes.
