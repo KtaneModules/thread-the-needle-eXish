@@ -382,7 +382,7 @@ public class ThreadTheNeedle : MonoBehaviour
 	
 	//twitch plays
     #pragma warning disable 414
-    private readonly string TwitchHelpMessage = @"To cycle down a wheel on the module, use the command !{0} cycle [1-5] | To press the down button on a wheel, use the command !{0} press [1-5] [1-8] | To submit your answer, use the command !{0} submit";
+    private readonly string TwitchHelpMessage = @"To cycle down a wheel on the module, use the command !{0} cycle [1-5] | To press the down button on a wheel, use the command !{0} press [1-5] [1-8] | To press the down button on all wheels, use the command !{0} toggle | To submit your answer, use the command !{0} submit";
     #pragma warning restore 414
 	
 	string[] ValidKeys = {"1", "2", "3", "4", "5"};
@@ -440,6 +440,16 @@ public class ThreadTheNeedle : MonoBehaviour
 		{
 			yield return null;
 			submitButton.OnInteract();
+		}
+
+		if (Regex.IsMatch(command, @"^\s*toggle\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			for (int i = 0; i < 5; i++)
+            {
+				downButtons[i].OnInteract();
+				yield return new WaitForSecondsRealtime(0.1f);
+			}
 		}
 	}
 
