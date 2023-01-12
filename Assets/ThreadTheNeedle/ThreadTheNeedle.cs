@@ -456,6 +456,8 @@ public class ThreadTheNeedle : MonoBehaviour
     IEnumerator TwitchHandleForcedSolve()
     {
         while (!isActive) { yield return true; }
+		redo:
+		Wheel bonusWheel = GetBonusWheel();
         int[] spins = new int[5];
         int ct = 0;
         while (true)
@@ -466,7 +468,7 @@ public class ThreadTheNeedle : MonoBehaviour
                 var wheel = new Wheel(wheels[j].Pattern, spins[j], null);
                 test[j] = wheel;
             }
-            test[5] = GetBonusWheel();
+            test[5] = bonusWheel;
             var success = TestWheelCombo(test, false);
             if (success) break;
             ct++;
@@ -521,6 +523,8 @@ public class ThreadTheNeedle : MonoBehaviour
             {
                 for (int i = 0; i < ct1; i++)
                 {
+					if (GetBonusWheel().Index != bonusWheel.Index)
+						goto redo;
                     downButtons[j].OnInteract();
                     yield return new WaitForSecondsRealtime(0.1f);
                 }
@@ -529,7 +533,9 @@ public class ThreadTheNeedle : MonoBehaviour
             {
                 for (int i = 0; i < ct2; i++)
                 {
-                    upButtons[j].OnInteract();
+					if (GetBonusWheel().Index != bonusWheel.Index)
+						goto redo;
+					upButtons[j].OnInteract();
                     yield return new WaitForSecondsRealtime(0.1f);
                 }
             }
@@ -538,7 +544,9 @@ public class ThreadTheNeedle : MonoBehaviour
                 int rando = Random.Range(0, 2);
                 for (int i = 0; i < ct2; i++)
                 {
-                    if (rando == 0)
+					if (GetBonusWheel().Index != bonusWheel.Index)
+						goto redo;
+					if (rando == 0)
                         upButtons[j].OnInteract();
                     else
                         downButtons[j].OnInteract();
@@ -546,6 +554,8 @@ public class ThreadTheNeedle : MonoBehaviour
                 }
             }
         }
-        submitButton.OnInteract();
+		if (GetBonusWheel().Index != bonusWheel.Index)
+			goto redo;
+		submitButton.OnInteract();
     }
 }
